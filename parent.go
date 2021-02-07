@@ -13,13 +13,14 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.11.
+// Last rebased against Go 1.13.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	//"crypto/rsa"
@@ -28,7 +29,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	//"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -45,6 +45,7 @@ import (
 //	isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
 //	rsaBits    = flag.Int("rsa-bits", 2048, "Size of RSA key to generate. Ignored if --ecdsa-curve is set")
 //	ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256 (recommended), P384, P521")
+//	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
 //)
 
 //func publicKey(priv interface{}) interface{} {
@@ -53,22 +54,8 @@ import (
 //		return &k.PublicKey
 //	case *ecdsa.PrivateKey:
 //		return &k.PublicKey
-//	default:
-//		return nil
-//	}
-//}
-
-//func pemBlockForKey(priv interface{}) *pem.Block {
-//	switch k := priv.(type) {
-//	case *rsa.PrivateKey:
-//		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}
-//	case *ecdsa.PrivateKey:
-//		b, err := x509.MarshalECPrivateKey(k)
-//		if err != nil {
-//			fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
-//			os.Exit(2)
-//		}
-//		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}
+//	case ed25519.PrivateKey:
+//		return k.Public().(ed25519.PublicKey)
 //	default:
 //		return nil
 //	}
@@ -86,8 +73,12 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	var err error
 	switch *ecdsaCurve {
 	case "":
-		//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
-		log.Fatalf("Missing required --ecdsa-curve parameter")
+		if *ed25519Key {
+			_, priv, err = ed25519.GenerateKey(rand.Reader)
+		} else {
+			//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
+			log.Fatalf("Missing required --ecdsa-curve or --ed25519 parameter")
+		}
 	case "P224": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	case "P256": // nolint: goconst
@@ -97,11 +88,10 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	case "P521": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
-		fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", *ecdsaCurve)
-		os.Exit(1)
+		log.Fatalf("Unrecognized elliptic curve: %q", *ecdsaCurve)
 	}
 	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
+		log.Fatalf("Failed to generate private key: %s", err)
 	}
 
 	var privPEM []byte
@@ -124,8 +114,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	} else {
 		notBefore, err = time.Parse("Jan 2 15:04:05 2006", *validFrom)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("Failed to parse creation date: %s", err)
 		}
 	}
 
@@ -134,7 +123,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
+		log.Fatalf("Failed to generate serial number: %s", err)
 	}
 
 	template := x509.Certificate{
@@ -179,13 +168,13 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 
 	//certOut, err := os.Create("cert.pem")
 	//if err != nil {
-	//	log.Fatalf("failed to open cert.pem for writing: %s", err)
+	//	log.Fatalf("Failed to open cert.pem for writing: %s", err)
 	//}
 	//if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-	//	log.Fatalf("failed to write data to cert.pem: %s", err)
+	//	log.Fatalf("Failed to write data to cert.pem: %s", err)
 	//}
 	//if err := certOut.Close(); err != nil {
-	//	log.Fatalf("error closing cert.pem: %s", err)
+	//	log.Fatalf("Error closing cert.pem: %s", err)
 	//}
 	//log.Print("wrote cert.pem\n")
 
@@ -204,17 +193,21 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	keyOut, err := os.OpenFile("caKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		//log.Print("failed to open key.pem for writing:", err)
-		log.Print("failed to open caKey.pem for writing:", err)
+		//log.Fatalf("Failed to open key.pem for writing:", err)
+		log.Fatalf("Failed to open caKey.pem for writing:", err)
 		return
 	}
-	if err := pem.Encode(keyOut, pemBlockForKey(priv)); err != nil {
-		//log.Fatalf("failed to write data to key.pem: %s", err)
-		log.Fatalf("failed to write data to caKey.pem: %s", err)
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		log.Fatalf("Unable to marshal private key: %v", err)
+	}
+	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+		//log.Fatalf("Failed to write data to key.pem: %s", err)
+		log.Fatalf("Failed to write data to caKey.pem: %s", err)
 	}
 	if err := keyOut.Close(); err != nil {
-		//log.Fatalf("error closing key.pem: %s", err)
-		log.Fatalf("error closing caKey.pem: %s", err)
+		//log.Fatalf("Error closing key.pem: %s", err)
+		log.Fatalf("Error closing caKey.pem: %s", err)
 	}
 	//log.Print("wrote key.pem\n")
 	log.Print("wrote caKey.pem\n")
