@@ -12,7 +12,7 @@ go:
 
 notifications:
   irc:
-    if: repo = namecoin/ncdns
+    if: repo = namecoin/generate_nmc_cert
     channels:
       - "irc.oftc.net#namecoin-dev"
     on_success: never
