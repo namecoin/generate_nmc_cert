@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.13.
+// Last rebased against Go 1.14.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
@@ -100,7 +100,7 @@ func main() {
 		log.Fatalf("Unrecognized elliptic curve: %q", *ecdsaCurve)
 	}
 	if err != nil {
-		log.Fatalf("Failed to generate private key: %s", err)
+		log.Fatalf("Failed to generate private key: %v", err)
 	}
 
 	var notBefore time.Time
@@ -109,7 +109,7 @@ func main() {
 	} else {
 		notBefore, err = time.Parse("Jan 2 15:04:05 2006", *validFrom)
 		if err != nil {
-			log.Fatalf("Failed to parse creation date: %s", err)
+			log.Fatalf("Failed to parse creation date: %v", err)
 		}
 	}
 
@@ -140,7 +140,7 @@ func main() {
 	serialNumber := big.NewInt(1)
 	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
 	if err != nil {
-		log.Fatalf("Failed to generate serial number: %s", err)
+		log.Fatalf("Failed to generate serial number: %v", err)
 	}
 	serialNumber.SetBytes(serialNumberBytes)
 
@@ -193,24 +193,24 @@ func main() {
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parent, publicKey(priv), parentPriv)
 	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
+		log.Fatalf("Failed to create certificate: %v", err)
 	}
 
 	certOut, err := os.Create("cert.pem")
 	if err != nil {
-		log.Fatalf("Failed to open cert.pem for writing: %s", err)
+		log.Fatalf("Failed to open cert.pem for writing: %v", err)
 	}
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to write data to cert.pem: %s", err)
+		log.Fatalf("Failed to write data to cert.pem: %v", err)
 	}
 	if err := certOut.Close(); err != nil {
-		log.Fatalf("Error closing cert.pem: %s", err)
+		log.Fatalf("Error closing cert.pem: %v", err)
 	}
 	log.Print("wrote cert.pem\n")
 
 	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("Failed to open key.pem for writing:", err)
+		log.Fatalf("Failed to open key.pem for writing: %v", err)
 		return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
@@ -218,10 +218,10 @@ func main() {
 		log.Fatalf("Unable to marshal private key: %v", err)
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		log.Fatalf("Failed to write data to key.pem: %s", err)
+		log.Fatalf("Failed to write data to key.pem: %v", err)
 	}
 	if err := keyOut.Close(); err != nil {
-		log.Fatalf("Error closing key.pem: %s", err)
+		log.Fatalf("Error closing key.pem: %v", err)
 	}
 	log.Print("wrote key.pem\n")
 
