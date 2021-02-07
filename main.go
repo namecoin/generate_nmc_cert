@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.8.3.
+// Last rebased against Go 1.14.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
@@ -21,6 +21,7 @@ package main
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -29,7 +30,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"flag"
-	"fmt"
 	"log"
 	"math/big"
 	//"net"
@@ -47,8 +47,9 @@ var (
 	validFor   = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
 	//isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
 	//rsaBits    = flag.Int("rsa-bits", 2048, "Size of RSA key to generate. Ignored if --ecdsa-curve is set")
-	//ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
-	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
+	//ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256 (recommended), P384, P521")
+	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256 (recommended), P384, P521")
+	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
 	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
 	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign with")
@@ -60,22 +61,8 @@ func publicKey(priv interface{}) interface{} {
 		return &k.PublicKey
 	case *ecdsa.PrivateKey:
 		return &k.PublicKey
-	default:
-		return nil
-	}
-}
-
-func pemBlockForKey(priv interface{}) *pem.Block {
-	switch k := priv.(type) {
-	case *rsa.PrivateKey:
-		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}
-	case *ecdsa.PrivateKey:
-		b, err := x509.MarshalECPrivateKey(k)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
-			os.Exit(2)
-		}
-		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}
+	case ed25519.PrivateKey:
+		return k.Public().(ed25519.PublicKey)
 	default:
 		return nil
 	}
@@ -90,10 +77,17 @@ func main() {
 
 	var priv interface{}
 	var err error
+	if *ed25519Key {
+		*ecdsaCurve = ""
+	}
 	switch *ecdsaCurve {
 	case "":
-		//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
-		log.Fatalf("Missing required --ecdsa-curve parameter")
+		if *ed25519Key {
+			_, priv, err = ed25519.GenerateKey(rand.Reader)
+		} else {
+			//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
+			log.Fatalf("Missing required --ecdsa-curve or --ed25519 parameter")
+		}
 	case "P224": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	case "P256": // nolint: goconst
@@ -103,11 +97,10 @@ func main() {
 	case "P521": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
-		fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", *ecdsaCurve)
-		os.Exit(1)
+		log.Fatalf("Unrecognized elliptic curve: %q", *ecdsaCurve)
 	}
 	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
+		log.Fatalf("Failed to generate private key: %v", err)
 	}
 
 	var notBefore time.Time
@@ -116,8 +109,7 @@ func main() {
 	} else {
 		notBefore, err = time.Parse("Jan 2 15:04:05 2006", *validFrom)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("Failed to parse creation date: %v", err)
 		}
 	}
 
@@ -148,7 +140,7 @@ func main() {
 	serialNumber := big.NewInt(1)
 	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
 	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
+		log.Fatalf("Failed to generate serial number: %v", err)
 	}
 	serialNumber.SetBytes(serialNumberBytes)
 
@@ -201,25 +193,37 @@ func main() {
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parent, publicKey(priv), parentPriv)
 	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
+		log.Fatalf("Failed to create certificate: %v", err)
 	}
 
 	certOut, err := os.Create("cert.pem")
 	if err != nil {
-		log.Fatalf("failed to open cert.pem for writing: %s", err)
+		log.Fatalf("Failed to open cert.pem for writing: %v", err)
 	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
-	log.Print("written cert.pem\n")
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		log.Fatalf("Failed to write data to cert.pem: %v", err)
+	}
+	if err := certOut.Close(); err != nil {
+		log.Fatalf("Error closing cert.pem: %v", err)
+	}
+	log.Print("wrote cert.pem\n")
 
 	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Print("failed to open key.pem for writing:", err)
+		log.Fatalf("Failed to open key.pem for writing: %v", err)
 		return
 	}
-	pem.Encode(keyOut, pemBlockForKey(priv))
-	keyOut.Close()
-	log.Print("written key.pem\n")
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		log.Fatalf("Unable to marshal private key: %v", err)
+	}
+	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+		log.Fatalf("Failed to write data to key.pem: %v", err)
+	}
+	if err := keyOut.Close(); err != nil {
+		log.Fatalf("Error closing key.pem: %v", err)
+	}
+	log.Print("wrote key.pem\n")
 
 	if *useCA {
 		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
