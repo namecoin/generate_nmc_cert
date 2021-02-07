@@ -1,5 +1,5 @@
-PROJNAME=github.com/namecoin/ncdns
-BINARIES=$(PROJNAME) $(PROJNAME)/ncdt $(PROJNAME)/ncdumpzone
+PROJNAME=github.com/namecoin/generate_nmc_cert
+BINARIES=$(PROJNAME)
 
 ###############################################################################
 # v1.14  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
