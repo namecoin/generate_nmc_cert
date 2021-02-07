@@ -25,11 +25,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	//"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/pem"
 	//"flag"
 	"io/ioutil"
@@ -67,7 +65,7 @@ import (
 //}
 
 //func main() {
-func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
+func getAIAParent() (parentCert x509.Certificate, parentPriv interface{}) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
@@ -104,12 +102,12 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		log.Print("Using existing CA private key")
 		privPEM, err = ioutil.ReadFile(*parentKey)
 		if err != nil {
-			log.Fatalf("Failed to read private key: %v", err)
+			log.Fatalf("failed to read private key: %v", err)
 		}
 		privBlock, _ := pem.Decode(privPEM)
 		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
 		if err != nil {
-			log.Fatalf("Failed to parse private key: %v", err)
+			log.Fatalf("failed to parse private key: %v", err)
 		}
 	}
 
@@ -135,7 +133,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			//Organization: []string{"Acme Co"},
-			CommonName:   *host + " Domain CA",
+			CommonName:   *host + " Domain AIA Parent CA",
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		NotBefore: notBefore,
@@ -166,49 +164,22 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//	template.KeyUsage |= x509.KeyUsageCertSign
 	//}
 
-	var aiaParent x509.Certificate
-	var aiaParentPriv interface{}
-
-	if *useAIA {
-		aiaParent, aiaParentPriv = getAIAParent()
-
-		aiaPubBytes, err := x509.MarshalPKIXPublicKey(publicKey(aiaParentPriv))
-		if err != nil {
-			log.Print("failed to marshal AIA CA public key:", err)
-			return
-		}
-		aiaPubHash := sha256.Sum256(aiaPubBytes)
-		aiaPubHashStr := hex.EncodeToString(aiaPubHash[:])
-
-		aiaBaseURL := "https://aia.x--nmc.bit/aia"
-		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubsha256=" + aiaPubHashStr
-		template.IssuingCertificateURL = []string{aiaURL}
-	} else {
-		aiaParent, aiaParentPriv = template, priv
-	}
-
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &aiaParent, publicKey(priv), aiaParentPriv)
-	if err != nil {
-		log.Fatalf("Failed to create certificate: %v", err)
-	}
+	//if err != nil {
+	//	log.Fatalf("Failed to create certificate: %v", err)
+	//}
 
 	//certOut, err := os.Create("cert.pem")
-	certOut, err := os.Create("caCert.pem")
-	if err != nil {
-		//log.Fatalf("failed to open cert.pem for writing: %v", err)
-		log.Fatalf("Failed to open caCert.pem for writing: %v", err)
-	}
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		//log.Fatalf("Failed to write data to cert.pem: %v", err)
-		log.Fatalf("Failed to write data to caCert.pem: %v", err)
-	}
-	if err := certOut.Close(); err != nil {
-		//log.Fatalf("Error closing cert.pem: %v", err)
-		log.Fatalf("Error closing caCert.pem: %v", err)
-	}
+	//if err != nil {
+		//log.Fatalf("Failed to open cert.pem for writing: %v", err)
+	//}
+	//if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+	//	log.Fatalf("Failed to write data to cert.pem: %v", err)
+	//}
+	//if err := certOut.Close(); err != nil {
+	//	log.Fatalf("Error closing cert.pem: %v", err)
+	//}
 	//log.Print("wrote cert.pem\n")
-	log.Print("wrote caCert.pem\n")
 
 	pubBytes, err := x509_compressed.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
@@ -223,10 +194,10 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	}
 
 	//keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	keyOut, err := os.OpenFile("caKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile("caAIAKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		//log.Fatalf("Failed to open key.pem for writing: %v", err)
-		log.Fatalf("Failed to open caKey.pem for writing: %v", err)
+		log.Fatalf("Failed to open caAIAKey.pem for writing: %v", err)
 		return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
@@ -235,14 +206,14 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
 		//log.Fatalf("Failed to write data to key.pem: %v", err)
-		log.Fatalf("Failed to write data to caKey.pem: %v", err)
+		log.Fatalf("Failed to write data to caAIAKey.pem: %v", err)
 	}
 	if err := keyOut.Close(); err != nil {
 		//log.Fatalf("Error closing key.pem: %v", err)
-		log.Fatalf("Error closing caKey.pem: %v", err)
+		log.Fatalf("Error closing caAIAKey.pem: %v", err)
 	}
 	//log.Print("wrote key.pem\n")
-	log.Print("wrote caKey.pem\n")
+	log.Print("wrote caAIAKey.pem\n")
 
 	return template, priv
 }
