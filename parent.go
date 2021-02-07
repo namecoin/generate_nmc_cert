@@ -36,6 +36,8 @@ import (
 	"os"
 	//"strings"
 	"time"
+
+	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
 
 //var (
@@ -178,7 +180,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//}
 	//log.Print("wrote cert.pem\n")
 
-	pubBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
+	pubBytes, err := x509_compressed.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
 		log.Print("failed to marshal CA public key:", err)
 		return
