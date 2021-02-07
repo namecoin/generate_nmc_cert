@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.9.
+// Last rebased against Go 1.11.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
@@ -171,10 +171,16 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 		//log.Fatalf("failed to open cert.pem for writing: %s", err)
 		log.Fatalf("failed to open falseCert.pem for writing: %s", err)
 	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
-	//log.Print("written cert.pem\n")
-	log.Print("written falseCert.pem\n")
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		//log.Fatalf("failed to write data to cert.pem: %s", err)
+		log.Fatalf("failed to write data to falseCert.pem: %s", err)
+	}
+	if err := certOut.Close(); err != nil {
+		//log.Fatalf("error closing cert.pem: %s", err)
+		log.Fatalf("error closing falseCert.pem: %s", err)
+	}
+	//log.Print("wrote cert.pem\n")
+	log.Print("wrote falseCert.pem\n")
 
 	//keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	keyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -183,8 +189,14 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 		log.Print("failed to open falseKey.pem for writing:", err)
 		return
 	}
-	pem.Encode(keyOut, pemBlockForKey(priv))
-	keyOut.Close()
-	//log.Print("written key.pem\n")
-	log.Print("written falseKey.pem\n")
+	if err := pem.Encode(keyOut, pemBlockForKey(priv)); err != nil {
+		//log.Fatalf("failed to write data to key.pem: %s", err)
+		log.Fatalf("failed to write data to falseKey.pem: %s", err)
+	}
+	if err := keyOut.Close(); err != nil {
+		//log.Fatalf("error closing key.pem: %s", err)
+		log.Fatalf("error closing falseKey.pem: %s", err)
+	}
+	//log.Print("wrote key.pem\n")
+	log.Print("wrote falseKey.pem\n")
 }

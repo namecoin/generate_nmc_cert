@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.9.
+// Last rebased against Go 1.11.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
@@ -181,9 +181,13 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//if err != nil {
 	//	log.Fatalf("failed to open cert.pem for writing: %s", err)
 	//}
-	//pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	//certOut.Close()
-	//log.Print("written cert.pem\n")
+	//if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+	//	log.Fatalf("failed to write data to cert.pem: %s", err)
+	//}
+	//if err := certOut.Close(); err != nil {
+	//	log.Fatalf("error closing cert.pem: %s", err)
+	//}
+	//log.Print("wrote cert.pem\n")
 
 	pubBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
@@ -204,10 +208,16 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		log.Print("failed to open caKey.pem for writing:", err)
 		return
 	}
-	pem.Encode(keyOut, pemBlockForKey(priv))
-	keyOut.Close()
-	//log.Print("written key.pem\n")
-	log.Print("written caKey.pem\n")
+	if err := pem.Encode(keyOut, pemBlockForKey(priv)); err != nil {
+		//log.Fatalf("failed to write data to key.pem: %s", err)
+		log.Fatalf("failed to write data to caKey.pem: %s", err)
+	}
+	if err := keyOut.Close(); err != nil {
+		//log.Fatalf("error closing key.pem: %s", err)
+		log.Fatalf("error closing caKey.pem: %s", err)
+	}
+	//log.Print("wrote key.pem\n")
+	log.Print("wrote caKey.pem\n")
 
 	return template, priv
 }

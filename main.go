@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.9.
+// Last rebased against Go 1.11.
 // Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
@@ -208,18 +208,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open cert.pem for writing: %s", err)
 	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
-	log.Print("written cert.pem\n")
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		log.Fatalf("failed to write data to cert.pem: %s", err)
+	}
+	if err := certOut.Close(); err != nil {
+		log.Fatalf("error closing cert.pem: %s", err)
+	}
+	log.Print("wrote cert.pem\n")
 
 	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Print("failed to open key.pem for writing:", err)
 		return
 	}
-	pem.Encode(keyOut, pemBlockForKey(priv))
-	keyOut.Close()
-	log.Print("written key.pem\n")
+	if err := pem.Encode(keyOut, pemBlockForKey(priv)); err != nil {
+		log.Fatalf("failed to write data to key.pem: %s", err)
+	}
+	if err := keyOut.Close(); err != nil {
+		log.Fatalf("error closing key.pem: %s", err)
+	}
+	log.Print("wrote key.pem\n")
 
 	if *useCA {
 		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
