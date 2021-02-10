@@ -228,7 +228,7 @@ func main() {
 	log.Print("wrote key.pem\n")
 
 	if *useCA {
-		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for your Namecoin name.")
+		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
 		return
 	}
 
