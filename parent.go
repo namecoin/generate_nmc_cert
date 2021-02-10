@@ -28,7 +28,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	//"flag"
@@ -39,8 +38,6 @@ import (
 	"os"
 	//"strings"
 	"time"
-
-	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
 
 //var (
@@ -210,13 +207,9 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//log.Print("wrote cert.pem\n")
 	log.Print("wrote caCert.pem\n")
 
-	pubBytes, err := x509_compressed.MarshalPKIXPublicKey(publicKey(priv))
-	if err != nil {
-		log.Print("failed to marshal CA public key:", err)
-		return
+	if ! *useAIA {
+		writeJSONTLSA(priv)
 	}
-	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
-	log.Printf("Your CA's \"tls\" record is: [2, 1, 0, \"%s\"]", pubB64)
 
 	if *parentKey != "" {
 		return template, priv
