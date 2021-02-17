@@ -14,7 +14,8 @@
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 // Last rebased against Go 1.14.
-// Future rebases need to rebase all of the main, parent, and falseHost flows.
+// Future rebases need to rebase all of the main, parent, aiaparent, and
+// falseHost flows.
 
 package main
 
@@ -53,6 +54,7 @@ var (
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
 	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
 	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign with")
+	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -226,7 +228,7 @@ func main() {
 	log.Print("wrote key.pem\n")
 
 	if *useCA {
-		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
+		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
 		return
 	}
 

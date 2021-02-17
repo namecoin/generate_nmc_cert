@@ -14,7 +14,8 @@
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 // Last rebased against Go 1.14.
-// Future rebases need to rebase all of the main, parent, and falseHost flows.
+// Future rebases need to rebase all of the main, parent, aiaparent, and
+// falseHost flows.
 
 package main
 
@@ -24,9 +25,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	//"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	//"flag"
 	"io/ioutil"
@@ -36,8 +38,6 @@ import (
 	"os"
 	//"strings"
 	"time"
-
-	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
 
 //var (
@@ -163,30 +163,53 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//	template.KeyUsage |= x509.KeyUsageCertSign
 	//}
 
+	var aiaParent x509.Certificate
+	var aiaParentPriv interface{}
+
+	if *useAIA {
+		aiaParent, aiaParentPriv = getAIAParent()
+
+		aiaPubBytes, err := x509.MarshalPKIXPublicKey(publicKey(aiaParentPriv))
+		if err != nil {
+			log.Print("failed to marshal AIA CA public key:", err)
+			return
+		}
+		aiaPubHash := sha256.Sum256(aiaPubBytes)
+		aiaPubHashStr := hex.EncodeToString(aiaPubHash[:])
+
+		aiaBaseURL := "https://aia.x--nmc.bit/aia"
+		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubsha256=" + aiaPubHashStr
+		template.IssuingCertificateURL = []string{aiaURL}
+	} else {
+		aiaParent, aiaParentPriv = template, priv
+	}
+
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
-	//if err != nil {
-	//	log.Fatalf("Failed to create certificate: %v", err)
-	//}
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &aiaParent, publicKey(priv), aiaParentPriv)
+	if err != nil {
+		log.Fatalf("Failed to create certificate: %v", err)
+	}
 
 	//certOut, err := os.Create("cert.pem")
-	//if err != nil {
-	//	log.Fatalf("Failed to open cert.pem for writing: %v", err)
-	//}
-	//if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-	//	log.Fatalf("Failed to write data to cert.pem: %v", err)
-	//}
-	//if err := certOut.Close(); err != nil {
-	//	log.Fatalf("Error closing cert.pem: %v", err)
-	//}
-	//log.Print("wrote cert.pem\n")
-
-	pubBytes, err := x509_compressed.MarshalPKIXPublicKey(publicKey(priv))
+	certOut, err := os.Create("caCert.pem")
 	if err != nil {
-		log.Print("failed to marshal CA public key:", err)
-		return
+		//log.Fatalf("failed to open cert.pem for writing: %v", err)
+		log.Fatalf("Failed to open caCert.pem for writing: %v", err)
 	}
-	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
-	log.Printf("Your CA's \"tls\" record is: [2, 1, 0, \"%s\"]", pubB64)
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		//log.Fatalf("Failed to write data to cert.pem: %v", err)
+		log.Fatalf("Failed to write data to caCert.pem: %v", err)
+	}
+	if err := certOut.Close(); err != nil {
+		//log.Fatalf("Error closing cert.pem: %v", err)
+		log.Fatalf("Error closing caCert.pem: %v", err)
+	}
+	//log.Print("wrote cert.pem\n")
+	log.Print("wrote caCert.pem\n")
+
+	if ! *useAIA {
+		writeJSONTLSA(priv)
+	}
 
 	if *parentKey != "" {
 		return template, priv

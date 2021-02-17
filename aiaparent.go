@@ -29,6 +29,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	//"flag"
+	"io/ioutil"
 	"log"
 	"math/big"
 	//"net"
@@ -61,7 +62,7 @@ import (
 //}
 
 //func main() {
-func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
+func getAIAParent() (parentCert x509.Certificate, parentPriv interface{}) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
@@ -90,8 +91,21 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 		log.Fatalf("Unrecognized elliptic curve: %q", *ecdsaCurve)
 	}
 	if err != nil {
-		//log.Fatalf("failed to generate private key: %s", err)
-		log.Fatalf("Failed to generate false private key: %v", err)
+		log.Fatalf("Failed to generate private key: %v", err)
+	}
+
+	var privPEM []byte
+	if *parentKey != "" {
+		log.Print("Using existing CA private key")
+		privPEM, err = ioutil.ReadFile(*parentKey)
+		if err != nil {
+			log.Fatalf("failed to read private key: %v", err)
+		}
+		privBlock, _ := pem.Decode(privPEM)
+		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
+		if err != nil {
+			log.Fatalf("failed to parse private key: %v", err)
+		}
 	}
 
 	var notBefore time.Time
@@ -106,31 +120,30 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 
 	notAfter := notBefore.Add(*validFor)
 
-	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	//if err != nil {
-	//	log.Fatalf("Failed to generate serial number: %v", err)
-	//}
-	serialNumber := big.NewInt(2)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		log.Fatalf("Failed to generate serial number: %v", err)
+	}
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			//Organization: []string{"Acme Co"},
-			CommonName:   *falseHost,
+			CommonName:   *host + " Domain AIA Parent CA",
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
-		// x509.KeyUsageKeyEncipherment is used for RSA key exchange,
-		// but not DHE/ECDHE key exchange.  Since everyone should be
-		// using ECDHE (due to forward secrecy), we disallow
-		// x509.KeyUsageKeyEncipherment in our template.
+		IsCA: true,
 		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageDigitalSignature,
+		KeyUsage:              x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
+
+		PermittedDNSDomainsCritical: true,
+		PermittedDNSDomains:         []string{*host},
 	}
 
 	//hosts := strings.Split(*host, ",")
@@ -139,7 +152,7 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
 	//		template.DNSNames = append(template.DNSNames, h)
-	template.DNSNames = append(template.DNSNames, *falseHost)
+	//template.DNSNames = append(template.DNSNames, *falseHost)
 	//	}
 	//}
 
@@ -149,34 +162,33 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 	//}
 
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parentTemplate, publicKey(priv), parentPriv)
-	if err != nil {
-		//log.Fatalf("Failed to create certificate: %v", err)
-		log.Fatalf("Failed to create false certificate: %v", err)
-	}
+	//if err != nil {
+	//	log.Fatalf("Failed to create certificate: %v", err)
+	//}
 
 	//certOut, err := os.Create("cert.pem")
-	certOut, err := os.Create("falseCert.pem")
-	if err != nil {
+	//if err != nil {
 		//log.Fatalf("Failed to open cert.pem for writing: %v", err)
-		log.Fatalf("Failed to open falseCert.pem for writing: %v", err)
-	}
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		//log.Fatalf("Failed to write data to cert.pem: %v", err)
-		log.Fatalf("Failed to write data to falseCert.pem: %v", err)
-	}
-	if err := certOut.Close(); err != nil {
-		//log.Fatalf("Error closing cert.pem: %v", err)
-		log.Fatalf("Error closing falseCert.pem: %v", err)
-	}
+	//}
+	//if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+	//	log.Fatalf("Failed to write data to cert.pem: %v", err)
+	//}
+	//if err := certOut.Close(); err != nil {
+	//	log.Fatalf("Error closing cert.pem: %v", err)
+	//}
 	//log.Print("wrote cert.pem\n")
-	log.Print("wrote falseCert.pem\n")
+
+	writeJSONTLSA(priv)
+
+	if *parentKey != "" {
+		return template, priv
+	}
 
 	//keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	keyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile("caAIAKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		//log.Fatalf("Failed to open key.pem for writing: %v", err)
-		log.Fatalf("Failed to open falseKey.pem for writing: %v", err)
+		log.Fatalf("Failed to open caAIAKey.pem for writing: %v", err)
 		return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
@@ -185,12 +197,14 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
 		//log.Fatalf("Failed to write data to key.pem: %v", err)
-		log.Fatalf("Failed to write data to falseKey.pem: %v", err)
+		log.Fatalf("Failed to write data to caAIAKey.pem: %v", err)
 	}
 	if err := keyOut.Close(); err != nil {
 		//log.Fatalf("Error closing key.pem: %v", err)
-		log.Fatalf("Error closing falseKey.pem: %v", err)
+		log.Fatalf("Error closing caAIAKey.pem: %v", err)
 	}
 	//log.Print("wrote key.pem\n")
-	log.Print("wrote falseKey.pem\n")
+	log.Print("wrote caAIAKey.pem\n")
+
+	return template, priv
 }
