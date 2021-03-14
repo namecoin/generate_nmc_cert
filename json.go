@@ -32,7 +32,7 @@ func writeJSONTLSA(priv interface{}) {
 		log.Fatalf("Failed to marshal Namecoin record: %v", err)
 	}
 
-	err = ioutil.WriteFile("namecoin.json", tlsaBytes, 0666)
+	err = ioutil.WriteFile("namecoin.json", tlsaBytes, 0600)
 	if err != nil {
 		log.Fatalf("Failed to write data to namecoin.json: %v", err)
 	}
