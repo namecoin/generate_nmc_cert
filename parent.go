@@ -36,7 +36,7 @@ import (
 	"math/big"
 	//"net"
 	"os"
-	//"strings"
+	"strings"
 	"time"
 )
 
@@ -161,18 +161,17 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		BasicConstraintsValid: true,
 
 		PermittedDNSDomainsCritical: true,
-		PermittedDNSDomains:         []string{*host},
 	}
 
-	//hosts := strings.Split(*host, ",")
-	//for _, h := range hosts {
+	hosts := strings.Split(*host, ",")
+	for _, h := range hosts {
 	//	if ip := net.ParseIP(h); ip != nil {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
 	//		template.DNSNames = append(template.DNSNames, h)
-	//template.DNSNames = append(template.DNSNames, *falseHost)
+	template.PermittedDNSDomains = append(template.PermittedDNSDomains, h)
 	//	}
-	//}
+	}
 
 	//if *isCA {
 	//	template.IsCA = true
