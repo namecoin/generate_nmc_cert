@@ -125,29 +125,35 @@ func main() {
 	notBeforeFloored := time.Unix((notBefore.Unix()/timestampPrecision)*timestampPrecision, 0)
 	notAfterFloored := time.Unix((notAfter.Unix()/timestampPrecision)*timestampPrecision, 0)
 
-	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	// Serial components
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
-	if err != nil {
-		log.Fatalf("failed to marshal public key: %s", err)
-	}
-	pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
-	notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
-	notAfterScaled := notAfterFloored.Unix() / timestampPrecision
-
-	// Calculate serial
-	serialDehydrated := certdehydrate.DehydratedCertificate{
-		PubkeyB64:       pubkeyB64,
-		NotBeforeScaled: notBeforeScaled,
-		NotAfterScaled:  notAfterScaled,
-	}
-	serialNumber := big.NewInt(1)
-	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Fatalf("Failed to generate serial number: %v", err)
 	}
-	serialNumber.SetBytes(serialNumberBytes)
+
+	// Use deterministic serial number for dehydrated certs
+	if !*useCA {
+		// Serial components
+		pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
+		if err != nil {
+			log.Fatalf("failed to marshal public key: %s", err)
+		}
+		pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
+		notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
+		notAfterScaled := notAfterFloored.Unix() / timestampPrecision
+
+		// Calculate serial
+		serialDehydrated := certdehydrate.DehydratedCertificate{
+			PubkeyB64:       pubkeyB64,
+			NotBeforeScaled: notBeforeScaled,
+			NotAfterScaled:  notAfterScaled,
+		}
+		serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
+		if err != nil {
+			log.Fatalf("Failed to generate deterministic serial number: %v", err)
+		}
+		serialNumber.SetBytes(serialNumberBytes)
+	}
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
