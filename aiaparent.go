@@ -102,7 +102,7 @@ func getAIAParent() (parentCert x509.Certificate, parentPriv interface{}) {
 			log.Fatalf("failed to read private key: %v", err)
 		}
 		privBlock, _ := pem.Decode(privPEM)
-		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
+		priv, err = x509.ParsePKCS8PrivateKey(privBlock.Bytes)
 		if err != nil {
 			log.Fatalf("failed to parse private key: %v", err)
 		}

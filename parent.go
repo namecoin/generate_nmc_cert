@@ -104,7 +104,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 			log.Fatalf("Failed to read private key: %v", err)
 		}
 		privBlock, _ := pem.Decode(privPEM)
-		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
+		priv, err = x509.ParsePKCS8PrivateKey(privBlock.Bytes)
 		if err != nil {
 			log.Fatalf("Failed to parse private key: %v", err)
 		}
