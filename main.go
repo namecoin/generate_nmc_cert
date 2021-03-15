@@ -55,6 +55,8 @@ var (
 	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
 	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign end-entity cert with (requires -use-ca)")
 	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with (requires -use-ca)")
+	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with (requires -use-ca)")
+	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with (requires -use-ca)")
 	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA (requires -use-ca)")
 )
 

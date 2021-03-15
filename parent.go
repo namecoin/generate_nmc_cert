@@ -196,6 +196,8 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		aiaBaseURL := "https://aia.x--nmc.bit/aia"
 		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubsha256=" + aiaPubHashStr
 		template.IssuingCertificateURL = []string{aiaURL}
+	} else if *grandparentKey != "" {
+		aiaParent, aiaParentPriv = getAIAParent()
 	} else {
 		aiaParent, aiaParentPriv = template, priv
 	}

@@ -95,9 +95,9 @@ func getAIAParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	}
 
 	var privPEM []byte
-	if *parentKey != "" {
+	if *grandparentKey != "" {
 		log.Print("Using existing CA private key")
-		privPEM, err = ioutil.ReadFile(*parentKey)
+		privPEM, err = ioutil.ReadFile(*grandparentKey)
 		if err != nil {
 			log.Fatalf("failed to read private key: %v", err)
 		}
@@ -106,6 +106,22 @@ func getAIAParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		if err != nil {
 			log.Fatalf("failed to parse private key: %v", err)
 		}
+	}
+
+	var chainPEM []byte
+	if *grandparentChain != "" {
+		log.Print("Using existing CA cert chain")
+		chainPEM, err = ioutil.ReadFile(*grandparentChain)
+		if err != nil {
+			log.Fatalf("Failed to read cert chain: %v", err)
+		}
+		chainBlock, _ := pem.Decode(chainPEM)
+		parsedCert, err := x509.ParseCertificate(chainBlock.Bytes)
+		if err != nil {
+			log.Fatalf("Failed to parse cert chain: %v", err)
+		}
+
+		return *parsedCert, priv
 	}
 
 	var notBefore time.Time
