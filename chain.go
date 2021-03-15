@@ -26,6 +26,11 @@ func writeChain() {
 		log.Fatalf("Failed to write end-entity cert to chain.pem: %v", err)
 	}
 
+	caChainOut, err := os.Create("caChain.pem")
+	if err != nil {
+		log.Fatalf("Failed to open caChain.pem for writing: %v", err)
+	}
+
 	if *useAIA || *parentChain != "" || *grandparentChain != "" {
 		_, err = chainOut.WriteString("\n\n")
 		if err != nil {
@@ -46,12 +51,22 @@ func writeChain() {
 		if err != nil {
 			log.Fatalf("Failed to write CA cert to chain.pem: %v", err)
 		}
+
+		_, err = caChainOut.Write(caCert)
+		if err != nil {
+			log.Fatalf("Failed to write CA cert to caChain.pem: %v", err)
+		}
 	}
 
 	if *grandparentChain != "" {
 		_, err = chainOut.WriteString("\n\n")
 		if err != nil {
 			log.Fatalf("Failed to write grandparent CA cert padding to chain.pem: %v", err)
+		}
+
+		_, err = caChainOut.WriteString("\n\n")
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert padding to caChain.pem: %v", err)
 		}
 
 		grandparentCert, err := ioutil.ReadFile(*grandparentChain)
@@ -63,10 +78,20 @@ func writeChain() {
 		if err != nil {
 			log.Fatalf("Failed to write grandparent CA cert to chain.pem: %v", err)
 		}
+
+		_, err = caChainOut.Write(grandparentCert)
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert to caChain.pem: %v", err)
+		}
 	}
 
 	if err := chainOut.Close(); err != nil {
 		log.Fatalf("Error closing chain.pem: %v", err)
 	}
 	log.Print("wrote chain.pem\n")
+
+	if err := caChainOut.Close(); err != nil {
+		log.Fatalf("Error closing caChain.pem: %v", err)
+	}
+	log.Print("wrote caChain.pem\n")
 }
