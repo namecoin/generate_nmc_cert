@@ -35,7 +35,7 @@ import (
 	"math/big"
 	//"net"
 	"os"
-	//"strings"
+	"strings"
 	"time"
 
 	"github.com/namecoin/ncdns/certdehydrate"
@@ -43,7 +43,7 @@ import (
 
 var (
 	//host       = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
-	host       = flag.String("host", "", "Hostname to generate a certificate for (only use one)")
+	host       = flag.String("host", "", "Comma-separated hostnames to generate a certificate for (only use one unless -parent-chain is set)")
 	validFrom  = flag.String("start-date", "", "Creation date formatted as Jan 1 15:04:05 2011")
 	validFor   = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
 	//isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
@@ -153,7 +153,6 @@ func main() {
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			//Organization: []string{"Acme Co"},
-			CommonName:   *host,
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		//NotBefore: notBefore,
@@ -171,15 +170,16 @@ func main() {
 		BasicConstraintsValid: true,
 	}
 
-	//hosts := strings.Split(*host, ",")
-	//for _, h := range hosts {
+	hosts := strings.Split(*host, ",")
+	for _, h := range hosts {
 	//	if ip := net.ParseIP(h); ip != nil {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
-	//		template.DNSNames = append(template.DNSNames, h)
-	template.DNSNames = append(template.DNSNames, *host)
+			template.DNSNames = append(template.DNSNames, h)
 	//	}
-	//}
+	}
+
+	template.Subject.CommonName = template.DNSNames[0]
 
 	//if *isCA {
 	//	template.IsCA = true
