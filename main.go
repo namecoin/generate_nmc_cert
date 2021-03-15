@@ -53,8 +53,9 @@ var (
 	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
 	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
-	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign with")
-	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA")
+	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign end-entity cert with (requires -use-ca)")
+	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with (requires -use-ca)")
+	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA (requires -use-ca)")
 )
 
 func publicKey(priv interface{}) interface{} {

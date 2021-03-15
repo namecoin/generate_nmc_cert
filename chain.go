@@ -26,15 +26,20 @@ func writeChain() {
 		log.Fatalf("Failed to write end-entity cert to chain.pem: %v", err)
 	}
 
-	if *useAIA {
+	if *useAIA || *parentChain != "" {
 		_, err = chainOut.WriteString("\n\n")
 		if err != nil {
 			log.Fatalf("Failed to write CA cert padding to chain.pem: %v", err)
 		}
 
-		caCert, err := ioutil.ReadFile("caCert.pem")
+		parentToRead := "caCert.pem"
+		if *parentChain != "" {
+			parentToRead = *parentChain
+		}
+
+		caCert, err := ioutil.ReadFile(parentToRead)
 		if err != nil {
-			log.Fatalf("Failed to read caCert.pem: %v", err)
+			log.Fatalf("Failed to read %s: %v", parentToRead, err)
 		}
 
 		_, err = chainOut.Write(caCert)
