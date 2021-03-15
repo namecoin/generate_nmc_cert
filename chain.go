@@ -26,20 +26,62 @@ func writeChain() {
 		log.Fatalf("Failed to write end-entity cert to chain.pem: %v", err)
 	}
 
-	if *useAIA {
+	caChainOut, err := os.Create("caChain.pem")
+	if err != nil {
+		log.Fatalf("Failed to open caChain.pem for writing: %v", err)
+	}
+
+	if *useAIA || *parentChain != "" || *grandparentChain != "" {
 		_, err = chainOut.WriteString("\n\n")
 		if err != nil {
 			log.Fatalf("Failed to write CA cert padding to chain.pem: %v", err)
 		}
 
-		caCert, err := ioutil.ReadFile("caCert.pem")
+		parentToRead := "caCert.pem"
+		if *parentChain != "" {
+			parentToRead = *parentChain
+		}
+
+		caCert, err := ioutil.ReadFile(parentToRead)
 		if err != nil {
-			log.Fatalf("Failed to read caCert.pem: %v", err)
+			log.Fatalf("Failed to read %s: %v", parentToRead, err)
 		}
 
 		_, err = chainOut.Write(caCert)
 		if err != nil {
 			log.Fatalf("Failed to write CA cert to chain.pem: %v", err)
+		}
+
+		_, err = caChainOut.Write(caCert)
+		if err != nil {
+			log.Fatalf("Failed to write CA cert to caChain.pem: %v", err)
+		}
+	}
+
+	if *grandparentChain != "" {
+		_, err = chainOut.WriteString("\n\n")
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert padding to chain.pem: %v", err)
+		}
+
+		_, err = caChainOut.WriteString("\n\n")
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert padding to caChain.pem: %v", err)
+		}
+
+		grandparentCert, err := ioutil.ReadFile(*grandparentChain)
+		if err != nil {
+			log.Fatalf("Failed to read %s: %v", *grandparentChain, err)
+		}
+
+		_, err = chainOut.Write(grandparentCert)
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert to chain.pem: %v", err)
+		}
+
+		_, err = caChainOut.Write(grandparentCert)
+		if err != nil {
+			log.Fatalf("Failed to write grandparent CA cert to caChain.pem: %v", err)
 		}
 	}
 
@@ -47,4 +89,9 @@ func writeChain() {
 		log.Fatalf("Error closing chain.pem: %v", err)
 	}
 	log.Print("wrote chain.pem\n")
+
+	if err := caChainOut.Close(); err != nil {
+		log.Fatalf("Error closing caChain.pem: %v", err)
+	}
+	log.Print("wrote caChain.pem\n")
 }

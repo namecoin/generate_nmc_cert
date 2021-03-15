@@ -36,7 +36,7 @@ import (
 	"math/big"
 	//"net"
 	"os"
-	//"strings"
+	"strings"
 	"time"
 )
 
@@ -104,10 +104,26 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 			log.Fatalf("Failed to read private key: %v", err)
 		}
 		privBlock, _ := pem.Decode(privPEM)
-		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
+		priv, err = x509.ParsePKCS8PrivateKey(privBlock.Bytes)
 		if err != nil {
 			log.Fatalf("Failed to parse private key: %v", err)
 		}
+	}
+
+	var chainPEM []byte
+	if *parentChain != "" {
+		log.Print("Using existing CA cert chain")
+		chainPEM, err = ioutil.ReadFile(*parentChain)
+		if err != nil {
+			log.Fatalf("Failed to read cert chain: %v", err)
+		}
+		chainBlock, _ := pem.Decode(chainPEM)
+		parsedCert, err := x509.ParseCertificate(chainBlock.Bytes)
+		if err != nil {
+			log.Fatalf("Failed to parse cert chain: %v", err)
+		}
+
+		return *parsedCert, priv
 	}
 
 	var notBefore time.Time
@@ -145,18 +161,17 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		BasicConstraintsValid: true,
 
 		PermittedDNSDomainsCritical: true,
-		PermittedDNSDomains:         []string{*host},
 	}
 
-	//hosts := strings.Split(*host, ",")
-	//for _, h := range hosts {
+	hosts := strings.Split(*host, ",")
+	for _, h := range hosts {
 	//	if ip := net.ParseIP(h); ip != nil {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
 	//		template.DNSNames = append(template.DNSNames, h)
-	//template.DNSNames = append(template.DNSNames, *falseHost)
+	template.PermittedDNSDomains = append(template.PermittedDNSDomains, h)
 	//	}
-	//}
+	}
 
 	//if *isCA {
 	//	template.IsCA = true
@@ -177,9 +192,12 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		aiaPubHash := sha256.Sum256(aiaPubBytes)
 		aiaPubHashStr := hex.EncodeToString(aiaPubHash[:])
 
-		aiaBaseURL := "https://aia.x--nmc.bit/aia"
+		// Support both HTTP and HTTPS AIA.
+		aiaBaseURL := "aia.x--nmc.bit/aia"
 		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubsha256=" + aiaPubHashStr
-		template.IssuingCertificateURL = []string{aiaURL}
+		template.IssuingCertificateURL = []string{"https://"+aiaURL, "http://"+aiaURL}
+	} else if *grandparentKey != "" {
+		aiaParent, aiaParentPriv = getAIAParent()
 	} else {
 		aiaParent, aiaParentPriv = template, priv
 	}

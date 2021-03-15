@@ -35,7 +35,7 @@ import (
 	"math/big"
 	//"net"
 	"os"
-	//"strings"
+	"strings"
 	"time"
 
 	"github.com/namecoin/ncdns/certdehydrate"
@@ -43,7 +43,7 @@ import (
 
 var (
 	//host       = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
-	host       = flag.String("host", "", "Hostname to generate a certificate for (only use one)")
+	host       = flag.String("host", "", "Comma-separated hostnames to generate a certificate for (only use one unless -parent-chain or -grandparent-chain is set)")
 	validFrom  = flag.String("start-date", "", "Creation date formatted as Jan 1 15:04:05 2011")
 	validFor   = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
 	//isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
@@ -53,8 +53,11 @@ var (
 	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
 	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
-	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign with")
-	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA")
+	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign end-entity cert with (requires -use-ca)")
+	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with (requires -use-ca)")
+	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with (requires -use-ca)")
+	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with (requires -use-ca)")
+	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA (requires -use-ca)")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -122,35 +125,40 @@ func main() {
 	notBeforeFloored := time.Unix((notBefore.Unix()/timestampPrecision)*timestampPrecision, 0)
 	notAfterFloored := time.Unix((notAfter.Unix()/timestampPrecision)*timestampPrecision, 0)
 
-	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	// Serial components
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
-	if err != nil {
-		log.Fatalf("failed to marshal public key: %s", err)
-	}
-	pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
-	notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
-	notAfterScaled := notAfterFloored.Unix() / timestampPrecision
-
-	// Calculate serial
-	serialDehydrated := certdehydrate.DehydratedCertificate{
-		PubkeyB64:       pubkeyB64,
-		NotBeforeScaled: notBeforeScaled,
-		NotAfterScaled:  notAfterScaled,
-	}
-	serialNumber := big.NewInt(1)
-	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Fatalf("Failed to generate serial number: %v", err)
 	}
-	serialNumber.SetBytes(serialNumberBytes)
+
+	// Use deterministic serial number for dehydrated certs
+	if !*useCA {
+		// Serial components
+		pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
+		if err != nil {
+			log.Fatalf("failed to marshal public key: %s", err)
+		}
+		pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
+		notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
+		notAfterScaled := notAfterFloored.Unix() / timestampPrecision
+
+		// Calculate serial
+		serialDehydrated := certdehydrate.DehydratedCertificate{
+			PubkeyB64:       pubkeyB64,
+			NotBeforeScaled: notBeforeScaled,
+			NotAfterScaled:  notAfterScaled,
+		}
+		serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
+		if err != nil {
+			log.Fatalf("Failed to generate deterministic serial number: %v", err)
+		}
+		serialNumber.SetBytes(serialNumberBytes)
+	}
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			//Organization: []string{"Acme Co"},
-			CommonName:   *host,
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		//NotBefore: notBefore,
@@ -168,15 +176,16 @@ func main() {
 		BasicConstraintsValid: true,
 	}
 
-	//hosts := strings.Split(*host, ",")
-	//for _, h := range hosts {
+	hosts := strings.Split(*host, ",")
+	for _, h := range hosts {
 	//	if ip := net.ParseIP(h); ip != nil {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
-	//		template.DNSNames = append(template.DNSNames, h)
-	template.DNSNames = append(template.DNSNames, *host)
+			template.DNSNames = append(template.DNSNames, h)
 	//	}
-	//}
+	}
+
+	template.Subject.CommonName = template.DNSNames[0]
 
 	//if *isCA {
 	//	template.IsCA = true
