@@ -37,14 +37,14 @@ task:
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
-    - golangci-lint run --no-config --enable-all --disable funlen,gci,gochecknoglobals,gocritic,gocyclo,godot,gofmt,gofumpt,gomnd,lll,wsl $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
+    - golangci-lint run --no-config --enable-all --disable exhaustivestruct,funlen,gci,gochecknoglobals,gocritic,gocyclo,godot,gofmt,gofumpt,gomnd,lll,wsl $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
   matrix:
     - name: Go Lint $GOOS New
       env:
         GOLANGCI_ARGS: "--new-from-rev=HEAD~"
     - name: Go Lint $GOOS Mandatory
       env:
-        GOLANGCI_ARGS: "--disable=cyclop,deadcode,errcheck,errorlint,exhaustivestruct,forbidigo,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofmt,gofumpt,goimports,golint,gosimple,ineffassign,lll,maligned,nakedret,nestif,nlreturn,nolintlint,paralleltest,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,whitespace,wrapcheck,wsl"
+        GOLANGCI_ARGS: "--disable=cyclop,deadcode,errcheck,errorlint,forbidigo,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofmt,gofumpt,goimports,golint,gosimple,ineffassign,lll,maligned,nakedret,nestif,nlreturn,nolintlint,paralleltest,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,whitespace,wrapcheck,wsl"
     - name: Go Lint $GOOS
       env:
         GOLANGCI_ARGS: ""
