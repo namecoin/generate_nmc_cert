@@ -1,7 +1,7 @@
 // nolint: gofmt, goimports
 
 // Copyright 2009 The Go Authors. All rights reserved.
-// Dehydrated certificate modifications Copyright 2015-2017 Jeremy Rand. All
+// Dehydrated certificate modifications Copyright 2015-2021 Jeremy Rand. All
 // rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
