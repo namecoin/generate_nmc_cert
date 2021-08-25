@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.14.
+// Last rebased against Go 1.15.
 // Future rebases need to rebase all of the main, parent, aiaparent, and
 // falseHost flows.
 
@@ -108,6 +108,16 @@ func main() {
 		log.Fatalf("Failed to generate private key: %v", err)
 	}
 
+	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
+	// KeyUsage bits set in the x509.Certificate template
+	keyUsage := x509.KeyUsageDigitalSignature
+	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In
+	// the context of TLS this KeyUsage is particular to RSA key exchange and
+	// authentication.
+	//if _, isRSA := priv.(*rsa.PrivateKey); isRSA {
+	//	keyUsage |= x509.KeyUsageKeyEncipherment
+	//}
+
 	var notBefore time.Time
 	if len(*validFrom) == 0 {
 		notBefore = time.Now()
@@ -166,12 +176,7 @@ func main() {
 		//NotAfter:  notAfter,
 		NotAfter:  notAfterFloored,
 
-		// x509.KeyUsageKeyEncipherment is used for RSA key exchange,
-		// but not DHE/ECDHE key exchange.  Since everyone should be
-		// using ECDHE (due to forward secrecy), we disallow
-		// x509.KeyUsageKeyEncipherment in our template.
-		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageDigitalSignature,
+		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}

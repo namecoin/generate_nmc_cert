@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.14.
+// Last rebased against Go 1.15.
 // Future rebases need to rebase all of the main, parent, aiaparent, and
 // falseHost flows.
 
@@ -126,6 +126,17 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		return *parsedCert, priv
 	}
 
+	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
+	// KeyUsage bits set in the x509.Certificate template
+	//keyUsage := x509.KeyUsageDigitalSignature
+	keyUsage := x509.KeyUsageCertSign
+	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In
+	// the context of TLS this KeyUsage is particular to RSA key exchange and
+	// authentication.
+	//if _, isRSA := priv.(*rsa.PrivateKey); isRSA {
+	//	keyUsage |= x509.KeyUsageKeyEncipherment
+	//}
+
 	var notBefore time.Time
 	if len(*validFrom) == 0 {
 		notBefore = time.Now()
@@ -154,9 +165,8 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
-		IsCA: true,
-		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageCertSign,
+		IsCA:                  true,
+		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 
