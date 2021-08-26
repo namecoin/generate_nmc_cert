@@ -226,7 +226,7 @@ func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 	//log.Print("wrote cert.pem\n")
 	log.Print("wrote caCert.pem\n")
 
-	if ! *useAIA {
+	if !*useAIA {
 		writeJSONTLSA(priv)
 	}
 
