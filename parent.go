@@ -64,7 +64,8 @@ import (
 //}
 
 //func main() {
-func getParent() (parentCert x509.Certificate, parentPriv any) {
+// Returns certificate and private key
+func getParent() (x509.Certificate, any) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
