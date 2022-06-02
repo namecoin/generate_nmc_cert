@@ -1,7 +1,7 @@
 // nolint: gofmt, goimports
 
 // Copyright 2009 The Go Authors. All rights reserved.
-// Dehydrated certificate modifications Copyright 2015-2021 Jeremy Rand. All
+// Dehydrated certificate modifications Copyright 2015-2022 Jeremy Rand. All
 // rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.17.
+// Last rebased against Go 1.18.
 // Future rebases need to rebase all of the main, parent, aiaparent, and
 // falseHost flows.
 
@@ -47,7 +47,7 @@ import (
 //	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
 //)
 
-//func publicKey(priv interface{}) interface{} {
+//func publicKey(priv any) any {
 //	switch k := priv.(type) {
 //	case *rsa.PrivateKey:
 //		return &k.PublicKey
@@ -61,14 +61,14 @@ import (
 //}
 
 //func main() {
-func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
+func doFalseHost(parentTemplate x509.Certificate, parentPriv any) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
 //		log.Fatalf("Missing required --host parameter")
 //	}
 
-	var priv interface{}
+	var priv any
 	var err error
 	switch *ecdsaCurve {
 	case "":
