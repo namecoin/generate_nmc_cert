@@ -1,7 +1,7 @@
 // nolint: gofmt, goimports
 
 // Copyright 2009 The Go Authors. All rights reserved.
-// Dehydrated certificate modifications Copyright 2015-2021 Jeremy Rand. All
+// Dehydrated certificate modifications Copyright 2015-2022 Jeremy Rand. All
 // rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -13,7 +13,7 @@
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
-// Last rebased against Go 1.17.
+// Last rebased against Go 1.18.
 // Future rebases need to rebase all of the main, parent, aiaparent, and
 // falseHost flows.
 
@@ -60,7 +60,7 @@ var (
 	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA (requires -use-ca)")
 )
 
-func publicKey(priv interface{}) interface{} {
+func publicKey(priv any) any {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
 		return &k.PublicKey
@@ -80,7 +80,7 @@ func main() {
 		log.Fatalf("Missing required --host parameter")
 	}
 
-	var priv interface{}
+	var priv any
 	var err error
 	if *ed25519Key {
 		*ecdsaCurve = ""
@@ -198,7 +198,7 @@ func main() {
 	//}
 
 	var parent x509.Certificate
-	var parentPriv interface{}
+	var parentPriv any
 
 	if *useCA {
 		parent, parentPriv = getParent()
