@@ -216,7 +216,7 @@ func getAIAParent() (x509.Certificate, any) {
 	if err != nil {
 		//log.Fatalf("Failed to open key.pem for writing: %v", err)
 		log.Fatalf("Failed to open caAIAKey.pem for writing: %v", err)
-		return
+		//return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {

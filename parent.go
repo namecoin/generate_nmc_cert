@@ -197,8 +197,7 @@ func getParent() (x509.Certificate, any) {
 
 		aiaPubBytes, err := x509.MarshalPKIXPublicKey(publicKey(aiaParentPriv))
 		if err != nil {
-			log.Print("failed to marshal AIA CA public key:", err)
-			return
+			log.Fatalf("failed to marshal AIA CA public key: %v", err)
 		}
 		aiaPubHash := sha256.Sum256(aiaPubBytes)
 		aiaPubHashStr := hex.EncodeToString(aiaPubHash[:])
@@ -250,7 +249,7 @@ func getParent() (x509.Certificate, any) {
 	if err != nil {
 		//log.Fatalf("Failed to open key.pem for writing: %v", err)
 		log.Fatalf("Failed to open caKey.pem for writing: %v", err)
-		return
+		//return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
