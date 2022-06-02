@@ -62,7 +62,8 @@ import (
 //}
 
 //func main() {
-func getAIAParent() (parentCert x509.Certificate, parentPriv any) {
+// Returns certificate and private key
+func getAIAParent() (x509.Certificate, any) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
@@ -215,7 +216,7 @@ func getAIAParent() (parentCert x509.Certificate, parentPriv any) {
 	if err != nil {
 		//log.Fatalf("Failed to open key.pem for writing: %v", err)
 		log.Fatalf("Failed to open caAIAKey.pem for writing: %v", err)
-		return
+		//return
 	}
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
