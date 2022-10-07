@@ -21,15 +21,19 @@ Option A: Using Go build commands without Go modules (works on any platform with
 3. Run `go get -d -t -u github.com/namecoin/generate_nmc_cert/...`. The generate_nmc_cert source code will be
    retrieved automatically.
 
-4. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
+4. If running an old Go version, you may need to enter the `generate_nmc_cert` directory and `git checkout` an older tag, e.g. for Go 1.15.x you should checkout the `v1.14` tag.
 
-5. Run `go get -t -u github.com/namecoin/generate_nmc_cert/...`.  generate_nmc_cert will be built. The binaries will be at `$GOPATH/bin/generate_nmc_cert`.
+5. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
+
+6. Run `go get -t -u github.com/namecoin/generate_nmc_cert/...`.  generate_nmc_cert will be built. The binaries will be at `$GOPATH/bin/generate_nmc_cert`.
 
 Option B: Using Go build commands with Go modules (works on any platform with Bash; Go 1.15+:
 
 1. Install [x509-compressed](https://github.com/namecoin/x509-compressed) according to its "with Go modules" instructions.  Clone generate_nmc_cert to a sibling directory of x509-compressed.
 
-2. Run the following in the generate_nmc_cert directory to set up Go modules:
+2. If running an old Go version, you may need to enter the `generate_nmc_cert` directory and `git checkout` an older tag, e.g. for Go 1.15.x you should checkout the `v1.14` tag.
+
+3. Run the following in the generate_nmc_cert directory to set up Go modules:
    
    ~~~
    go mod init
@@ -38,7 +42,7 @@ Option B: Using Go build commands with Go modules (works on any platform with Ba
    go mod tidy
    ~~~
 
-3. Run `go install ./...`.  generate_nmc_cert will be built. The binaries will be at `$GOPATH/bin/generate_nmc_cert`.
+4. Run `go install ./...`.  generate_nmc_cert will be built. The binaries will be at `$GOPATH/bin/generate_nmc_cert`.
 
 Option C: Using Makefile (non-Windows platforms):
 
