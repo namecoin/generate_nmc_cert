@@ -12,21 +12,9 @@ task:
   path_script:
     - source testdata/move_to_gopath.bash
   matrix:
-    - x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      fetch_script:
+    - fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init
-        - go mod tidy
-        - go mod edit -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
@@ -79,23 +67,10 @@ task:
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      fetch_script:
+    - fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init
-        - go mod tidy
-        - go mod edit -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
         # Get the test suite
         - mkdir -p $(go env GOPATH)/src/github.com/hlandau
@@ -134,25 +109,12 @@ task:
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      gox_script:
+    - gox_script:
         - go install github.com/mitchellh/gox@latest
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init
-        - go mod tidy
-        - go mod edit -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
   build_script:
     - rm -rf idist
