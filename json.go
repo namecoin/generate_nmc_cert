@@ -5,6 +5,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"io/ioutil"
@@ -17,12 +18,14 @@ func writeJSONTLSA(priv any) {
 		log.Fatalf("Failed to marshal CA public key: %v", err)
 	}
 
+	pubHash := sha256.Sum256(pubBytes)
+
 	// See the IANA DANE Parameters registry.
 	tlsa := make([]any, 4)
 	tlsa[0] = 2 // DANE-TA
 	tlsa[1] = 1 // SPKI
-	tlsa[2] = 0 // Full
-	tlsa[3] = pubBytes
+	tlsa[2] = 1 // SHA-256
+	tlsa[3] = pubHash[:]
 
 	tlsaBytes, err := json.Marshal(tlsa)
 	if err != nil {
