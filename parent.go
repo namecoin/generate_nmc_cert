@@ -25,10 +25,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	//"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/pem"
 	//"flag"
 	"io/ioutil"
@@ -199,14 +198,16 @@ func getParent() (x509.Certificate, any) {
 		if err != nil {
 			log.Fatalf("failed to marshal AIA CA public key: %v", err)
 		}
-		aiaPubHash := sha256.Sum256(aiaPubBytes)
-		aiaPubHashStr := hex.EncodeToString(aiaPubHash[:])
+		// Use RawURLEncoding for consistency with Encaya implementation.
+		aiaPubStr := base64.RawURLEncoding.EncodeToString(aiaPubBytes)
 
 		// Support only HTTP AIA.  HTTPS is not supported by major TLS clients,
 		// and listing an HTTPS URL can cause them to not chase the HTTP URL.
 		aiaBaseURL := "aia.x--nmc.bit/aia"
-		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubsha256=" + aiaPubHashStr
+		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubb64=" + aiaPubStr
 		template.IssuingCertificateURL = []string{"http://" + aiaURL}
+
+		applyPi(&template)
 	} else if *grandparentKey != "" {
 		aiaParent, aiaParentPriv = getAIAParent()
 	} else {

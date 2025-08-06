@@ -5,25 +5,27 @@
 package main
 
 import (
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"io/ioutil"
 	"log"
-
-	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
 
 func writeJSONTLSA(priv any) {
-	pubBytes, err := x509_compressed.MarshalPKIXPublicKey(publicKey(priv))
+	pubBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
 		log.Fatalf("Failed to marshal CA public key: %v", err)
 	}
+
+	pubHash := sha256.Sum256(pubBytes)
 
 	// See the IANA DANE Parameters registry.
 	tlsa := make([]any, 4)
 	tlsa[0] = 2 // DANE-TA
 	tlsa[1] = 1 // SPKI
-	tlsa[2] = 0 // Full
-	tlsa[3] = pubBytes
+	tlsa[2] = 1 // SHA-256
+	tlsa[3] = pubHash[:]
 
 	tlsaBytes, err := json.Marshal(tlsa)
 	if err != nil {
