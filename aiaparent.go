@@ -184,6 +184,9 @@ func getAIAParent() (x509.Certificate, any) {
 
 	// Embed stapled data in Subject Serial Number
 	stapled := map[string]string{"pubb64": pubStr}
+
+	applyPiDomainAIAParentCA(&template, stapled)
+
 	stapledBytes, err := json.Marshal(stapled)
 	if err != nil {
 		log.Fatalf("failed to marshal stapled data: %v", err)

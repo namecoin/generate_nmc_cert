@@ -207,7 +207,7 @@ func getParent() (x509.Certificate, any) {
 		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubb64=" + aiaPubStr
 		template.IssuingCertificateURL = []string{"http://" + aiaURL}
 
-		applyPi(&template)
+		applyPiDomainCA(&template)
 	} else if *grandparentKey != "" {
 		aiaParent, aiaParentPriv = getAIAParent()
 	} else {

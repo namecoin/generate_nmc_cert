@@ -7,5 +7,8 @@ import (
 	"crypto/x509"
 )
 
-func applyPi(template *x509.Certificate) {
+func applyPiDomainAIAParentCA(template *x509.Certificate, stapled map[string]string) {
+}
+
+func applyPiDomainCA(template *x509.Certificate) {
 }
