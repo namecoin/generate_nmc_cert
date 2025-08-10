@@ -27,6 +27,8 @@ import (
 	//"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	//"flag"
 	"io/ioutil"
@@ -172,6 +174,24 @@ func getAIAParent() (x509.Certificate, any) {
 		PermittedDNSDomainsCritical: true,
 		PermittedDNSDomains:         []string{*host},
 	}
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
+	if err != nil {
+		log.Fatalf("failed to marshal AIA CA public key: %v", err)
+	}
+	// Use RawURLEncoding for consistency with Encaya implementation.
+	pubStr := base64.RawURLEncoding.EncodeToString(pubBytes)
+
+	// Embed stapled data in Subject Serial Number
+	stapled := map[string]string{"pubb64": pubStr}
+
+	applyPiDomainAIAParentCA(&template, stapled)
+
+	stapledBytes, err := json.Marshal(stapled)
+	if err != nil {
+		log.Fatalf("failed to marshal stapled data: %v", err)
+	}
+	template.Subject.SerialNumber = template.Subject.SerialNumber + "\n\nStapled: " + string(stapledBytes)
 
 	//hosts := strings.Split(*host, ",")
 	//for _, h := range hosts {
