@@ -31,31 +31,29 @@ func writeChain() {
 		log.Fatalf("Failed to open caChain.pem for writing: %v", err)
 	}
 
-	if *useAIA || *parentChain != "" || *grandparentChain != "" {
-		_, err = chainOut.WriteString("\n\n")
-		if err != nil {
-			log.Fatalf("Failed to write CA cert padding to chain.pem: %v", err)
-		}
+	_, err = chainOut.WriteString("\n\n")
+	if err != nil {
+		log.Fatalf("Failed to write CA cert padding to chain.pem: %v", err)
+	}
 
-		parentToRead := "caCert.pem"
-		if *parentChain != "" {
-			parentToRead = *parentChain
-		}
+	parentToRead := "caCert.pem"
+	if *parentChain != "" {
+		parentToRead = *parentChain
+	}
 
-		caCert, err := ioutil.ReadFile(parentToRead)
-		if err != nil {
-			log.Fatalf("Failed to read %s: %v", parentToRead, err)
-		}
+	caCert, err := ioutil.ReadFile(parentToRead)
+	if err != nil {
+		log.Fatalf("Failed to read %s: %v", parentToRead, err)
+	}
 
-		_, err = chainOut.Write(caCert)
-		if err != nil {
-			log.Fatalf("Failed to write CA cert to chain.pem: %v", err)
-		}
+	_, err = chainOut.Write(caCert)
+	if err != nil {
+		log.Fatalf("Failed to write CA cert to chain.pem: %v", err)
+	}
 
-		_, err = caChainOut.Write(caCert)
-		if err != nil {
-			log.Fatalf("Failed to write CA cert to caChain.pem: %v", err)
-		}
+	_, err = caChainOut.Write(caCert)
+	if err != nil {
+		log.Fatalf("Failed to write CA cert to caChain.pem: %v", err)
 	}
 
 	if *grandparentChain != "" {
