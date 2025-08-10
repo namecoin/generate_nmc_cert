@@ -14,13 +14,12 @@
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 // Last rebased against Go 1.18.
-// Future rebases need to rebase all of the main, parent, aiaparent, and
-// falseHost flows.
+// Future rebases need to rebase all of the main, parent, and aiaparent
+// flows.
 
 package main
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -28,7 +27,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/pem"
 	"flag"
 	"log"
@@ -37,8 +35,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/namecoin/ncdns/certdehydrate"
 )
 
 var (
@@ -49,15 +45,13 @@ var (
 	//isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
 	//rsaBits    = flag.Int("rsa-bits", 2048, "Size of RSA key to generate. Ignored if --ecdsa-curve is set")
 	//ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256 (recommended), P384, P521")
-	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256 (recommended), P384, P521")
+	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256 (default), P384, P521")
 	ed25519Key = flag.Bool("ed25519", false, "Generate an Ed25519 key")
-	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
-	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
-	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign end-entity cert with (requires -use-ca)")
-	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with (requires -use-ca)")
-	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with (requires -use-ca)")
-	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with (requires -use-ca)")
-	useAIA     = flag.Bool("use-aia", false, "Use AIA to chase the CA (requires -use-ca)")
+	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign end-entity cert with")
+	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with")
+	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with")
+	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with")
+	useAIA *bool
 )
 
 func publicKey(priv any) any {
@@ -79,6 +73,8 @@ func main() {
 	if len(*host) == 0 {
 		log.Fatalf("Missing required --host parameter")
 	}
+
+	*useAIA = *parentChain == "" && *grandparentChain == ""
 
 	var priv any
 	var err error
@@ -141,30 +137,6 @@ func main() {
 		log.Fatalf("Failed to generate serial number: %v", err)
 	}
 
-	// Use deterministic serial number for dehydrated certs
-	if !*useCA {
-		// Serial components
-		pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
-		if err != nil {
-			log.Fatalf("failed to marshal public key: %s", err)
-		}
-		pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
-		notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
-		notAfterScaled := notAfterFloored.Unix() / timestampPrecision
-
-		// Calculate serial
-		serialDehydrated := certdehydrate.DehydratedCertificate{
-			PubkeyB64:       pubkeyB64,
-			NotBeforeScaled: notBeforeScaled,
-			NotAfterScaled:  notAfterScaled,
-		}
-		serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
-		if err != nil {
-			log.Fatalf("Failed to generate deterministic serial number: %v", err)
-		}
-		serialNumber.SetBytes(serialNumberBytes)
-	}
-
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
@@ -200,11 +172,7 @@ func main() {
 	var parent x509.Certificate
 	var parentPriv any
 
-	if *useCA {
-		parent, parentPriv = getParent()
-	} else {
-		parent, parentPriv = template, priv
-	}
+	parent, parentPriv = getParent()
 
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parent, publicKey(priv), parentPriv)
@@ -243,40 +211,5 @@ func main() {
 
 	writeChain()
 
-	if *useCA {
-		log.Print("SUCCESS.  Place chain.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
-		return
-	}
-
-	parsedResult, err := x509.ParseCertificate(derBytes)
-	if err != nil {
-		log.Fatal("failed to parse output cert: ", err)
-	}
-
-	dehydrated, err := certdehydrate.DehydrateCert(parsedResult)
-	if err != nil {
-		log.Fatal("failed to dehydrate result cert: ", err)
-	}
-
-	rehydrated, err := certdehydrate.RehydrateCert(dehydrated)
-	if err != nil {
-		log.Fatal("failed to rehydrate result cert: ", err)
-	}
-
-	rehydratedDerBytes, err := certdehydrate.FillRehydratedCertTemplate(*rehydrated, *host)
-	if err != nil {
-		log.Fatal("failed to fill rehydrated result cert: ", err)
-	}
-
-	if !bytes.Equal(derBytes, rehydratedDerBytes) {
-		log.Fatal("ERROR: The cert did not rehydrate to an identical form.  This is a bug; do not use the generated certificate.")
-	}
-
-	log.Print("Your Namecoin cert is: {\"d8\":", dehydrated, "}")
-
-	log.Print("SUCCESS: The cert rehydrated to an identical form.  Place the generated files in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
-
-	if len(*falseHost) > 0 {
-		doFalseHost(template, priv)
-	}
+	log.Print("SUCCESS.  Place chain.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
 }

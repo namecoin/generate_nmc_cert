@@ -14,8 +14,8 @@
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 // Last rebased against Go 1.18.
-// Future rebases need to rebase all of the main, parent, aiaparent, and
-// falseHost flows.
+// Future rebases need to rebase all of the main, parent, and aiaparent
+// flows.
 
 package main
 

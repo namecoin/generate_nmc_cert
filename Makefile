@@ -1,4 +1,4 @@
-PROJNAME=github.com/namecoin/generate_nmc_cert
+PROJNAME=github.com/namecoin/ncgencert
 BINARIES=$(PROJNAME)
 
 ###############################################################################
