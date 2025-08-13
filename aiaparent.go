@@ -180,10 +180,10 @@ func getAIAParent() (x509.Certificate, any) {
 		log.Fatalf("failed to marshal AIA CA public key: %v", err)
 	}
 	// Use RawURLEncoding for consistency with Encaya implementation.
-	pubStr := base64.RawURLEncoding.EncodeToString(pubBytes)
+	pubBase64 := base64.RawURLEncoding.EncodeToString(pubBytes)
 
 	// Embed stapled data in Subject Serial Number
-	stapled := map[string]string{"pubb64": pubStr}
+	stapled := map[string]string{"pubb64": pubBase64}
 
 	applyPiDomainAIAParentCA(&template, stapled)
 
@@ -252,6 +252,28 @@ func getAIAParent() (x509.Certificate, any) {
 	}
 	//log.Print("wrote key.pem\n")
 	log.Print("wrote caAIAKey.pem\n")
+
+	messageHeader := "Namecoin X.509 Stapled Certification: "
+
+	messageData := map[string]string{
+		"domain": *host,
+		"x509pub": pubBase64,
+		"address": "FILL IN NAMECOIN ADDRESS HERE BEFORE SIGNING",
+	}
+
+	messageDataBytes, err := json.Marshal(messageData)
+	if err != nil {
+		log.Fatalf("Failed to Marshal blockchain message data: %v", err)
+	}
+
+	messageStr := messageHeader + string(messageDataBytes)
+
+	err = ioutil.WriteFile("caAIAMessage.txt", []byte(messageStr), 0600)
+	if err != nil {
+		log.Fatalf("Failed to write data to caAIAMessage.txt: %v", err)
+	}
+
+	log.Print("wrote caAIAMessage.txt")
 
 	return template, priv
 }

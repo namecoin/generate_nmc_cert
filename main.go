@@ -51,6 +51,7 @@ var (
 	parentChain = flag.String("parent-chain", "", "(Optional) Path to existing CA cert chain to sign end-entity cert with")
 	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with")
 	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with")
+	sigs = flag.String("sigs", "", "(Optional) Path to existing Namecoin message signatures to staple (saves blockchain space)")
 	useAIA *bool
 )
 
@@ -211,5 +212,11 @@ func main() {
 
 	writeChain()
 
-	log.Print("SUCCESS.  Place chain.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
+	if *sigs == "" && *grandparentKey == "" {
+		log.Print("SUCCESS. You have two deployment options.")
+		log.Print("Option 1 (wastes blockchain space): Place chain.pem and key.pem in your HTTPS server, and place the contents of \"namecoin.json\" in the \"tls\" field for \"*." + *host + "\".")
+		log.Print("Option 2 (conserves blockchain space): sign \"caAIAMessage.txt\" with your Namecoin wallet. Then re-run ncgencert with the \"-grandparent-key\" and \"-sigs\" parameters to generate your final certificate chain; no blockchain transaction is necessary.")
+	} else {
+		log.Print("SUCCESS. Place chain.pem and key.pem in your HTTPS server.")
+	}
 }

@@ -205,6 +205,17 @@ func getParent() (x509.Certificate, any) {
 		// and listing an HTTPS URL can cause them to not chase the HTTP URL.
 		aiaBaseURL := "aia.x--nmc.bit/aia"
 		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubb64=" + aiaPubStr
+
+		// Attach sigs if requested
+		if *sigs != "" {
+			sigsBytes, err := ioutil.ReadFile(*sigs)
+			if err != nil {
+				log.Fatalf("Failed to read stapled sigs: %v", err)
+			}
+
+			aiaURL = aiaURL + "&sigs=" + string(sigsBytes)
+		}
+
 		template.IssuingCertificateURL = []string{"http://" + aiaURL}
 
 		applyPiDomainCA(&template)
