@@ -191,7 +191,7 @@ func getParent() (x509.Certificate, any) {
 	var aiaParent x509.Certificate
 	var aiaParentPriv any
 
-	if *useAIA {
+	if useAIA {
 		aiaParent, aiaParentPriv = getAIAParent()
 
 		aiaPubBytes, err := x509.MarshalPKIXPublicKey(publicKey(aiaParentPriv))

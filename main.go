@@ -52,7 +52,7 @@ var (
 	grandparentKey  = flag.String("grandparent-key", "", "(Optional) Path to existing CA private key to sign CA cert with")
 	grandparentChain = flag.String("grandparent-chain", "", "(Optional) Path to existing CA cert chain to sign CA cert with")
 	sigs = flag.String("sigs", "", "(Optional) Path to existing Namecoin message signatures to staple (saves blockchain space)")
-	useAIA *bool
+	useAIA bool
 )
 
 func publicKey(priv any) any {
@@ -75,7 +75,7 @@ func main() {
 		log.Fatalf("Missing required --host parameter")
 	}
 
-	*useAIA = *parentChain == "" && *grandparentChain == ""
+	useAIA = *parentChain == "" && *grandparentChain == ""
 
 	var priv any
 	var err error
