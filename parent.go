@@ -34,6 +34,7 @@ import (
 	"log"
 	"math/big"
 	//"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -191,7 +192,7 @@ func getParent() (x509.Certificate, any) {
 	var aiaParent x509.Certificate
 	var aiaParentPriv any
 
-	if *useAIA {
+	if useAIA {
 		aiaParent, aiaParentPriv = getAIAParent()
 
 		aiaPubBytes, err := x509.MarshalPKIXPublicKey(publicKey(aiaParentPriv))
@@ -204,7 +205,18 @@ func getParent() (x509.Certificate, any) {
 		// Support only HTTP AIA.  HTTPS is not supported by major TLS clients,
 		// and listing an HTTPS URL can cause them to not chase the HTTP URL.
 		aiaBaseURL := "aia.x--nmc.bit/aia"
-		aiaURL := aiaBaseURL + "?domain=" + *host + "&pubb64=" + aiaPubStr
+		aiaURL := aiaBaseURL + "?domain=" + url.QueryEscape(*host) + "&pubb64=" + url.QueryEscape(aiaPubStr)
+
+		// Attach sigs if requested
+		if *sigs != "" {
+			sigsBytes, err := ioutil.ReadFile(*sigs)
+			if err != nil {
+				log.Fatalf("Failed to read stapled sigs: %v", err)
+			}
+
+			aiaURL = aiaURL + "&sigs=" + url.QueryEscape(string(sigsBytes))
+		}
+
 		template.IssuingCertificateURL = []string{"http://" + aiaURL}
 
 		applyPiDomainCA(&template)
