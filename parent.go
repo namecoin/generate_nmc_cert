@@ -207,7 +207,7 @@ func getParent() (x509.Certificate, any) {
 		aiaBaseURL := "aia.x--nmc.bit/aia"
 		aiaURL := aiaBaseURL + "?domain=" + url.QueryEscape(*host) + "&pubb64=" + url.QueryEscape(aiaPubStr)
 
-		// Attach sigs if requested
+		// Staple sigs if requested
 		if *sigs != "" {
 			sigsBytes, err := ioutil.ReadFile(*sigs)
 			if err != nil {

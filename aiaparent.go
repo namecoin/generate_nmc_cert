@@ -185,6 +185,16 @@ func getAIAParent() (x509.Certificate, any) {
 	// Embed stapled data in Subject Serial Number
 	stapled := map[string]string{"pubb64": pubBase64}
 
+	// Staple sigs if requested
+	if *sigs != "" {
+		sigsBytes, err := ioutil.ReadFile(*sigs)
+		if err != nil {
+			log.Fatalf("Failed to read stapled sigs: %v", err)
+		}
+
+		stapled["sigs"] = string(sigsBytes)
+	}
+
 	applyPiDomainAIAParentCA(&template, stapled)
 
 	stapledBytes, err := json.Marshal(stapled)
